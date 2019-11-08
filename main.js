@@ -1,59 +1,50 @@
+//when the page loads, call the init function
 window.addEventListener("DOMContentLoaded", init);
 
-const preloader={
-  visible:true,
-  wrapper:null,
-  setup(){
-    wrapper = document.createElement("div");
-    for(let i=0; i<5; i++){
-      const kid = document.createElement("div");
-      kid.style.animationDelay=Number("0."+i-0.2)+"s"
-      wrapper.appendChild(kid);
-    }
-    wrapper.id="preloader";
-    document.body.prepend(wrapper);
-  },
-  _setVisible(visible){
-    this.visible=visible;
-    wrapper.style.display = this.visible ? "flex":"none";
-  },
-  toggle(){
-    this._setVisible(!this.visible);
-  },
-  hide(){
-    this._setVisible(false);
-  },
-  show(){
-    this._setVisible(true);
-  },
-}
-
 function init(){
-
-  preloader.setup();
-
   const urlParams = new URLSearchParams(window.location.search);
+  //grab search=something from the url (it might not exist)
   const search = urlParams.get("search");
-
+  //grab id=something from the url (it might not exist)
   const id = urlParams.get("id");
+  const category = urlParams.get("category");
 
-
-  if(search){
-    console.log("this is a search result")
+  if(search){ //if search has a value
     getSearchData();
-  } else if(id){
+  } else if(id){ //if id has a value
     getSingleBook();
-  } else {
-    console.log("NOT searching")
+  } else if (category){
+    //category stuff
+
+    getCategoryData(category)
+  } else { // if neither is true, get data for the frontpage
     getFrontpageData();
   }
+  getNavigation()
+}
 
+function getNavigation(){
+  fetch("http://kea-alt-del.dk/t9_2019_autumn/wp-json/wp/v2/categories?per_page=100")
+    .then(res=>res.json())
+    .then(data=>{
+      //console.log(data)
+      data.forEach(addLink)
+    })
+}
 
+function addLink(oneItem){
+  //console.log(oneItem)
+  //document.querySelector("nav").innerHTML += oneItem.name
+  if(oneItem.parent === 14 && oneItem.count > 0){
+    const link = document.createElement("a");
+    link.textContent=oneItem.name;
+    link.setAttribute("href", "category.html?category="+oneItem.id)
+    document.querySelector("nav").appendChild(link);
+  }
 }
 function getSearchData(){
   const urlParams = new URLSearchParams(window.location.search);
   const search = urlParams.get("search");
-  //console.log("getData")
 
   fetch("https://kea-alt-del.dk/t9_2019_autumn/wp-json/wp/v2/book?_embed&search="+search)
     .then(res=>res.json())
@@ -61,9 +52,14 @@ function getSearchData(){
 }
 
 function getFrontpageData(){
-  //console.log("getData")
-
   fetch("https://kea-alt-del.dk/t9_2019_autumn/wp-json/wp/v2/book?_embed")
+    .then(res=>res.json())
+    .then(handleData)
+}
+
+function getCategoryData(catId){
+  console.log(catId)
+  fetch("https://kea-alt-del.dk/t9_2019_autumn/wp-json/wp/v2/book?_embed&categories="+catId)
     .then(res=>res.json())
     .then(handleData)
 }
@@ -71,33 +67,22 @@ function getFrontpageData(){
 function getSingleBook(){
   const urlParams = new URLSearchParams(window.location.search);
   const id = urlParams.get("id");
-  console.log(id)
-
 
   fetch("https://kea-alt-del.dk/t9_2019_autumn/wp-json/wp/v2/book/"+id)
     .then(res=>res.json())
   .then(showBook)
 
-
   function showBook(book){
-    console.log(book)
     document.querySelector("article h1").textContent=book.title.rendered
   }
 }
 
 function handleData(myData){
-  //console.log(myData);
-  preloader.hide();
-  //1 loop
   myData.forEach(showPost)
-
-
-
 }
-function showPost(post){
-  console.log(post)
-  const imgPath = post._embedded["wp:featuredmedia"][0].media_details.sizes.thumbnail.source_url;
 
+function showPost(post){
+  const imgPath = post._embedded["wp:featuredmedia"][0].media_details.sizes.thumbnail.source_url;
 
   const template = document.querySelector(".postTemplate").content;
   const postCopy = template.cloneNode(true);
